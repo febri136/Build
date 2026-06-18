@@ -1,7 +1,7 @@
 name: Build Ubuntu Touch Boot Image Mi8937
 
 on:
-  workflow_dispatch: # Memungkinkan Anda menjalankan build secara manual dari web GitHub
+  workflow_dispatch:
 
 jobs:
   build-kernel:
@@ -19,11 +19,10 @@ jobs:
         version: 14
         platform: x64
 
-    - name: Ambil Kode Sumber Kernel via Tarball Archive
+    - name: Ambil Kode Sumber Kernel Tanpa URL
       run: |
+        # Menggunakan jalur API unduhan internal GitHub murni untuk menghindari pemotongan string
         mkdir -p $GITHUB_WORKSPACE/kernel
-        cd $GITHUB_WORKSPACE
-        # Mengunduh paket arsip kode sumber langsung tanpa melalui perintah git checkout
         curl -sL https://github.com -o kernel.tar.gz
         tar -xzf kernel.tar.gz --strip-components=1 -C kernel
         rm kernel.tar.gz
@@ -32,7 +31,7 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel
         make ARCH=arm64 O=out msm8937_defconfig
-        # Mengunduh skrip menggunakan API pendek tanpa teks domain utama github
+        # Menggunakan alamat repositori pendek via curl api
         curl -sLo check-kernel-config https://githubusercontent.com
         chmod +x check-kernel-config
         ./check-kernel-config out/.config -w
@@ -46,11 +45,10 @@ jobs:
     - name: Bungkus Kernel Menjadi boot.img (Halium)
       run: |
         cd $GITHUB_WORKSPACE
-        # Mengunduh utilitas otomatis tanpa git clone eksternal yang panjang
         curl -sLo mkbootimg https://githubusercontent.com
         chmod +x mkbootimg
         
-        # Eksekusi pembungkusan kernel menggunakan ramdisk bawaan standar generic
+        # Membaca biner keluaran dari folder internal mesin virtual /out/
         ./mkbootimg --kernel kernel/out/arch/arm64/boot/Image.gz-dtb \
                     --ramdisk /boot/initrd.img-generic \
                     --cmdline "console=ttyMSM0,115200n8 androidboot.hardware=qcom user_debug=31 androidboot.bootdevice=7824900.sdhci-retrofitted" \
