@@ -19,33 +19,25 @@ jobs:
         version: 14
         platform: x64
 
-    - name: Ambil Kode Sumber Kernel Mi-Thorium Mi8937
+    - name: Ambil Kode Sumber Kernel via Git Clone Mandiri
       run: |
-        mkdir -p $GITHUB_WORKSPACE/kernel
-        cd $GITHUB_WORKSPACE
-        
+        # Memecah komponen tautan menjadi teks biasa agar kebal dari bug potong teks di ponsel Anda
         PROT="https"
         DOM="github.com"
         ORG="Mi-Thorium"
-        REPO="kernel_msm-4.19"
-        FILE="archive/refs/heads/master.tar.gz"
+        REPO="kernel_msm-4.19.git"
         
-        curl -sL "${PROT}://${DOM}/${ORG}/${REPO}/${FILE}" -o kernel.tar.gz
-        tar -xzf kernel.tar.gz --strip-components=1 -C kernel
-        rm kernel.tar.gz
+        # Menjalankan git clone secara rekursif untuk menarik semua folder driver (techpack, prima, prime) yang terpisah
+        git clone --recursive "${PROT}://${DOM}/${ORG}/${REPO}" $GITHUB_WORKSPACE/kernel --depth=1
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
       run: |
         cd $GITHUB_WORKSPACE/kernel
         
-        # PERBAIKAN TOTAL: Mematikan pemanggilan folder staging yang tidak lengkap di Kconfig
-        sed -i 's/source "drivers\/staging\/Kconfig"/#source "drivers\/staging\/Kconfig"/g' drivers/Kconfig
-        
+        # Membuat konfigurasi defconfig bawaan Mi8937 (Sekarang aman karena semua folder driver sudah lengkap)
         make ARCH=arm64 O=out msm8937_defconfig
         
-        # Nonaktifkan flag CONFIG_STAGING langsung di konfigurasi build .config
-        sed -i 's/CONFIG_STAGING=y/CONFIG_STAGING=n/g' out/.config
-        
+        # Mengunduh skrip verifikasi kontainer sistem operasi Ubuntu Touch hulu
         curl -sLo check-kernel-config "https://githubusercontent.com"
         chmod +x check-kernel-config
         ./check-kernel-config out/.config -w
@@ -59,9 +51,11 @@ jobs:
     - name: Bungkus Kernel Menjadi boot.img (Halium)
       run: |
         cd $GITHUB_WORKSPACE
+        # Mengunduh biner eksekusi pembuat boot.img Android standard
         curl -sLo mkbootimg "https://githubusercontent.com"
         chmod +x mkbootimg
         
+        # Mengompilasi ramdisk bersama output biner Image.gz-dtb hasil kerja Mi-Thorium
         ./mkbootimg --kernel kernel/out/arch/arm64/boot/Image.gz-dtb \
                     --ramdisk /boot/initrd.img-generic \
                     --cmdline "console=ttyMSM0,115200n8 androidboot.hardware=qcom user_debug=31 androidboot.bootdevice=7824900.sdhci-retrofitted" \
