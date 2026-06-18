@@ -38,10 +38,13 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel
         
-        # PERBAIKAN: Menghapus baris driver 'prime' yang hilang agar tidak memicu Error 2
-        sed -i '/drivers\/staging\/prime\/Kconfig/d' drivers/staging/Kconfig
+        # PERBAIKAN TOTAL: Mematikan pemanggilan folder staging yang tidak lengkap di Kconfig
+        sed -i 's/source "drivers\/staging\/Kconfig"/#source "drivers\/staging\/Kconfig"/g' drivers/Kconfig
         
         make ARCH=arm64 O=out msm8937_defconfig
+        
+        # Nonaktifkan flag CONFIG_STAGING langsung di konfigurasi build .config
+        sed -i 's/CONFIG_STAGING=y/CONFIG_STAGING=n/g' out/.config
         
         curl -sLo check-kernel-config "https://githubusercontent.com"
         chmod +x check-kernel-config
