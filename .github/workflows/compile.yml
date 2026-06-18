@@ -30,29 +30,29 @@ jobs:
 
     - name: Unduh Modul Driver Wi-Fi, Kamera, dan Audio Secara Manual
       run: |
-        # TRIK AMAN: Menarik file driver multimedia yang kosong langsung dari server API hulu
         cd $GITHUB_WORKSPACE/kernel
         
         PROT="https"
         DOM="github.com"
         ORG="Mi-Thorium"
         
-        # 1. Mengunduh dan menempatkan Driver Wi-Fi & Bluetooth (Prima)
-        curl -sL "${PROT}://${DOM}/${ORG}/kernel_drivers_staging_prima/archive/refs/heads/master.tar.gz" -o prima.tar.gz
-        tar -xzf prima.tar.gz --strip-components=1 -C drivers/staging/
-        rm prima.tar.gz
+        # DEFINISI REPO TUJUAN UTUH (Aman dari bug pemotongan teks pada ponsel Anda)
+        WIFI_REPO="vendor_qcom_opensource_wlan_prima.git"
+        CAM_REPO="kernel_techpack_camera-legacy.git"
         
-        # 2. Mengunduh dan menempatkan Driver Kamera Legacy (Camera-Legacy)
+        # 1. Menarik Driver Wi-Fi & Bluetooth (Prima) langsung ke folder drivers/staging/prima
+        rm -rf drivers/staging/prima
+        git clone "${PROT}://${DOM}/${ORG}/${WIFI_REPO}" drivers/staging/prima --depth=1
+        
+        # 2. Menarik Driver Kamera (Camera-Legacy) langsung ke folder techpack/camera-legacy
         mkdir -p techpack/camera-legacy
-        curl -sL "${PROT}://${DOM}/${ORG}/kernel_techpack_camera-legacy/archive/refs/heads/camera/LA.UM.8.6.r1-05300-89xx.0/4.19/mithorium.tar.gz" -o camera.tar.gz
-        tar -xzf camera.tar.gz --strip-components=5 -C techpack/camera-legacy/
-        rm camera.tar.gz
+        git clone "${PROT}://${DOM}/${ORG}/${CAM_REPO}" techpack/camera-legacy --depth=1
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
       run: |
         cd $GITHUB_WORKSPACE/kernel
         
-        # Memicu defconfig (Sekarang 100% Lolos karena seluruh folder driver hardware sudah terisi utuh)
+        # Memicu pembuatan file konfigurasi hardware Mi8937 murni
         make ARCH=arm64 O=out msm8937_defconfig
         
         # Mengunduh skrip verifikasi kontainer sistem operasi Ubuntu Touch hulu
