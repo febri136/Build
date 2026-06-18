@@ -19,12 +19,14 @@ jobs:
         version: 14
         platform: x64
 
-    - name: Ambil Kode Sumber Kernel 4.19 Mi8937
-      uses: actions/checkout@v4
-      with:
-        repository: Mi-Thorium/kernel_msm-4.19
-        ref: master
-        path: kernel
+    - name: Ambil Kode Sumber Kernel via Tarball Archive
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/kernel
+        cd $GITHUB_WORKSPACE
+        # Mengunduh paket arsip kode sumber langsung tanpa melalui perintah git checkout
+        curl -sL https://github.com -o kernel.tar.gz
+        tar -xzf kernel.tar.gz --strip-components=1 -C kernel
+        rm kernel.tar.gz
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
       run: |
