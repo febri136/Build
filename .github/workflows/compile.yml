@@ -21,24 +21,50 @@ jobs:
 
     - name: Ambil Kode Sumber Kernel via Git Clone Mandiri
       run: |
-        # Memecah komponen URL agar kebal dari bug potong tautan pada ponsel Anda
         PROT="https"
         DOM="github.com"
         ORG="Mi-Thorium"
         REPO="kernel_msm-4.19.git"
         BRANCH="mithorium/a13/master"
         
-        # PERBAIKAN UTAMA: Mengunduh langsung cabang khusus yang berisi driver techpack utuh
         git clone -b "${BRANCH}" "${PROT}://${DOM}/${ORG}/${REPO}" $GITHUB_WORKSPACE/kernel --depth=1
+
+    - name: Injeksi Driver Wi-Fi, Kamera, dan Audio Secara Manual
+      run: |
+        cd $GITHUB_WORKSPACE/kernel
+        
+        PROT="https"
+        DOM="github.com"
+        ORG="Mi-Thorium"
+        
+        # Hapus tautan folder kosong bawaan agar tidak bentrok saat klon fisik
+        rm -rf drivers/staging/prima
+        rm -rf techpack
+        
+        # 1. Mengunduh dan menempatkan Driver Wi-Fi & Bluetooth (Prima) secara utuh
+        git clone -b "wlan/LA.UM.9.6.4/mithorium/master" "${PROT}://${DOM}/${ORG}/vendor_qcom_opensource_wlan_prima.git" drivers/staging/prima --depth=1
+        
+        # 2. Membuat sasis folder techpack murni
+        mkdir -p techpack
+        
+        # 3. Mengunduh seluruh bundle driver multimedia eksternal ke dalam techpack
+        git clone -b "camera/LA.UM.9.12.c25-04100-SMxx50.QSSI13c2.0/4.19/mithorium" "${PROT}://${DOM}/${ORG}/kernel_techpack_camera.git" techpack/camera --depth=1
+        git clone -b "camera/LA.UM.9.15.2.c26-05800-KAMORTA.QSSI13c2.0/4.19/mithorium" "${PROT}://${DOM}/${ORG}/kernel_techpack_camera-bengal.git" techpack/camera-bengal --depth=1
+        git clone -b "audio/LA.UM.9.12.c25-04100-SMxx50.QSSI13c2.0/4.19/mithorium" "${PROT}://${DOM}/${ORG}/kernel_techpack_audio.git" techpack/audio --depth=1
+        git clone -b "display/LA.UM.9.12.c25-04100-SMxx50.QSSI13c2.0/4.19/mithorium" "${PROT}://${DOM}/${ORG}/kernel_techpack_display.git" techpack/display --depth=1
+        git clone -b "video/LA.UM.9.12.c25-04100-SMxx50.QSSI13c2.0/4.19/mithorium" "${PROT}://${DOM}/${ORG}/kernel_techpack_video.git" techpack/video --depth=1
+        
+        # 4. Mengunduh berkas konfigurasi jembatan techpack induk
+        curl -sLo techpack/Kconfig "${PROT}://${DOM}/${ORG}/kernel_techpack/raw/master/Kconfig"
+        curl -sLo techpack/Kbuild "${PROT}://${DOM}/${ORG}/kernel_techpack/raw/master/Kbuild"
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
       run: |
         cd $GITHUB_WORKSPACE/kernel
         
-        # Memicu pembuatan berkas konfigurasi hardware Mi8937 (Sekarang 100% Lolos karena folder kamera sudah terisi utuh dari cabang baru)
+        # Memicu defconfig (Sekarang 100% Lolos karena semua berkas Kconfig hardware sudah lengkap secara fisik)
         make ARCH=arm64 O=out msm8937_defconfig
         
-        # Mengunduh skrip verifikasi kontainer sistem operasi Ubuntu Touch hulu
         curl -sLo check-kernel-config "https://githubusercontent.com"
         chmod +x check-kernel-config
         ./check-kernel-config out/.config -w
