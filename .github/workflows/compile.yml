@@ -11,29 +11,31 @@ jobs:
     - name: Standard Pengaturan Lingkungan Build
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git format-junk android-sdk-libsparse-utils initramfs-tools cpio
+        sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev
 
     - name: Unduh Android Toolchain (Clang/GCC)
       run: |
         mkdir -p $GITHUB_WORKSPACE/toolchain
         cd $GITHUB_WORKSPACE/toolchain
-        # Mengunduh AOSP GCC sebagai toolchain arm64 standar
+        # Mengunduh AOSP GCC sebagai toolchain arm64 standar yang valid
         git clone https://googlesource.com --depth=1
 
     - name: Ambil Kode Sumber Kernel 4.19 Mi8937
       run: |
+        # Mengunduh repositori kernel 4.19 Mi-Thorium unified msm8937
         git clone https://github.com -b master $GITHUB_WORKSPACE/kernel --depth=1
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
       run: |
         cd $GITHUB_WORKSPACE/kernel
         make ARCH=arm64 msm8937_defconfig
+        # Mengunduh skrip verifikasi konfigurasi resmi milik UBports
         wget https://githubusercontent.com
         chmod +x check-kernel-config
         # Mengotomatiskan injeksi parameter wajib Ubuntu Touch ke berkas .config
         ./check-kernel-config .config -w
-        # Simpan kembali konfigurasi yang sudah lolos uji ke defconfig asli
-        savedefconfig ARCH=arm64
+        # Menyimpan hasil modifikasi konfigurasi kembali ke struktur defconfig sebelum kompilasi
+        make ARCH=arm64 savedefconfig
 
     - name: Eksekusi Kompilasi Kernel 4.19
       run: |
@@ -46,15 +48,15 @@ jobs:
     - name: Bungkus Kernel Menjadi boot.img (Halium)
       run: |
         cd $GITHUB_WORKSPACE
-        # Mengunduh utilitas ramdisk dan pembuat bootimg
-        git clone https://github.com/Halium/halium-boot.git --depth=1
+        # Mengunduh utilitas ramdisk dan skrip pembungkus mkbootimg standar
+        git clone https://github.com --depth=1
         wget https://githubusercontent.com
         chmod +x mkbootimg
         
-        # Contoh perintah pembungkusan biner kernel (Sesuaikan cmdline dengan spesifikasi Mi8937 Anda)
+        # Eksekusi pembungkusan kernel (Ubah parameter cmdline/base jika tidak cocok dengan device tree Anda)
         ./mkbootimg --kernel kernel/arch/arm64/boot/Image.gz-dtb \
                     --ramdisk halium-boot/initramfs-tools-halium/initrd.img-touch-arm64 \
-                    --cmdline "console=ttyMSM0,115200n8 androidboot.hardware=qcom user_debug=31" \
+                    --cmdline "console=ttyMSM0,115200n8 androidboot.hardware=qcom user_debug=31 androidboot.bootdevice=7824900.sdhci-retrofitted" \
                     --base 0x80000000 \
                     --pagesize 2048 \
                     -o ubuntu-touch-boot-mi8937.img
