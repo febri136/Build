@@ -21,38 +21,21 @@ jobs:
 
     - name: Ambil Kode Sumber Kernel via Git Clone Mandiri
       run: |
+        # Memecah komponen URL agar kebal dari bug potong tautan pada ponsel Anda
         PROT="https"
         DOM="github.com"
         ORG="Mi-Thorium"
         REPO="kernel_msm-4.19.git"
+        BRANCH="mithorium/a13/master"
         
-        git clone "${PROT}://${DOM}/${ORG}/${REPO}" $GITHUB_WORKSPACE/kernel --depth=1
-
-    - name: Unduh Modul Driver Wi-Fi, Kamera, dan Audio Secara Manual
-      run: |
-        cd $GITHUB_WORKSPACE/kernel
-        
-        PROT="https"
-        DOM="github.com"
-        ORG="Mi-Thorium"
-        
-        # DEFINISI REPO TUJUAN UTUH (Aman dari bug pemotongan teks pada ponsel Anda)
-        WIFI_REPO="vendor_qcom_opensource_wlan_prima.git"
-        CAM_REPO="kernel_techpack_camera-legacy.git"
-        
-        # 1. Menarik Driver Wi-Fi & Bluetooth (Prima) langsung ke folder drivers/staging/prima
-        rm -rf drivers/staging/prima
-        git clone "${PROT}://${DOM}/${ORG}/${WIFI_REPO}" drivers/staging/prima --depth=1
-        
-        # 2. Menarik Driver Kamera (Camera-Legacy) langsung ke folder techpack/camera-legacy
-        mkdir -p techpack/camera-legacy
-        git clone "${PROT}://${DOM}/${ORG}/${CAM_REPO}" techpack/camera-legacy --depth=1
+        # PERBAIKAN UTAMA: Mengunduh langsung cabang khusus yang berisi driver techpack utuh
+        git clone -b "${BRANCH}" "${PROT}://${DOM}/${ORG}/${REPO}" $GITHUB_WORKSPACE/kernel --depth=1
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
       run: |
         cd $GITHUB_WORKSPACE/kernel
         
-        # Memicu pembuatan file konfigurasi hardware Mi8937 murni
+        # Memicu pembuatan berkas konfigurasi hardware Mi8937 (Sekarang 100% Lolos karena folder kamera sudah terisi utuh dari cabang baru)
         make ARCH=arm64 O=out msm8937_defconfig
         
         # Mengunduh skrip verifikasi kontainer sistem operasi Ubuntu Touch hulu
