@@ -43,9 +43,9 @@ jobs:
           sed -i 's/source "drivers\/staging\/prima\/Kconfig"/#source "drivers\/staging\/prima\/Kconfig"/g' drivers/staging/Kconfig
         fi
         
-        # 3. Sinkronisasi nama folder pemicu internal techpack jika tidak cocok dengan Kconfig bawaan
+        # 3. PERBAIKAN UTAMA: Mengubah camera-legacy atau camera-legacy-m menjadi camera agar sesuai isi folder fisik
         if [ -f "techpack/Kconfig" ]; then
-          sed -i 's/camera-legacy-m/camera/g' techpack/Kconfig
+          sed -i 's/camera-legacy/camera/g' techpack/Kconfig
         fi
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
