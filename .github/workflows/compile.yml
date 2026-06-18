@@ -11,21 +11,13 @@ jobs:
     - name: Standard Pengaturan Lingkungan Build
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev libelf-dev
+        sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev libelf-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
     - name: Set Up LLVM dan Clang Compiler
       uses: egor-tensin/setup-clang@v2
       with:
         version: 14
         platform: x64
-
-    - name: Unduh GCC Cross-Compilers (GitHub Mirrors)
-      run: |
-        mkdir -p $GITHUB_WORKSPACE/toolchain
-        cd $GITHUB_WORKSPACE/toolchain
-        # Menggunakan repositori alternatif GitHub yang bebas dari isu otentikasi 404 Google Source
-        git clone https://github.com --depth=1 gcc64
-        git clone https://github.com --depth=1 gcc32
 
     - name: Ambil Kode Sumber Kernel 4.19 Mi8937
       run: |
@@ -47,11 +39,9 @@ jobs:
     - name: Eksekusi Kompilasi Kernel 4.19
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        # Mengintegrasikan tautan binutils GCC ke dalam env PATH
-        export PATH="$GITHUB_WORKSPACE/toolchain/gcc64/bin:$GITHUB_WORKSPACE/toolchain/gcc32/bin:$PATH"
         
-        # Eksekusi kompilasi terpadu menggunakan Clang dari sistem GitHub Virtual Machine
-        make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- -j$(nproc)
+        # Eksekusi kompilasi menggunakan Clang VM dan GCC cross-compiler bawaan Ubuntu Linux murni
+        make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- -j$(nproc)
 
     - name: Bungkus Kernel Menjadi boot.img (Halium)
       run: |
