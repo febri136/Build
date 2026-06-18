@@ -83,7 +83,7 @@ jobs:
     - name: Mengunduh dan Menjalankan Eksekusi Droidian Kernel Check
       run: |
         cd kernel
-        # Mengunduh skrip validator resmi Droidian
+        # Mengunduh skrip validator resmi dari repositori Droidian
         curl -sL https://githubusercontent.com -o debian/droidian-kernel-check
         chmod +x debian/droidian-kernel-check
         
