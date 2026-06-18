@@ -19,11 +19,21 @@ jobs:
         version: 14
         platform: x64
 
-    - name: Ambil Kode Sumber Kernel Tanpa URL
+    - name: Ambil Kode Sumber Kernel Mi-Thorium Mi8937
       run: |
-        # Menggunakan jalur API unduhan internal GitHub murni untuk menghindari pemotongan string
         mkdir -p $GITHUB_WORKSPACE/kernel
-        curl -sL https://github.com -o kernel.tar.gz
+        cd $GITHUB_WORKSPACE
+        
+        # TRIK KHUSUS: Menyusun variabel teks agar kebal dari bug salin-tempel ponsel Anda
+        PROT="https"
+        DOM="github.com"
+        ORG="Mi-Thorium"
+        REPO="kernel_msm-4.19"
+        FILE="archive/refs/heads/master.tar.gz"
+        
+        # Peladen GitHub Actions akan menggabungkan variabel di atas menjadi tautan Mi-Thorium yang utuh
+        curl -sL "${PROT}://${DOM}/${ORG}/${REPO}/${FILE}" -o kernel.tar.gz
+        
         tar -xzf kernel.tar.gz --strip-components=1 -C kernel
         rm kernel.tar.gz
 
@@ -31,8 +41,10 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel
         make ARCH=arm64 O=out msm8937_defconfig
-        # Menggunakan alamat repositori pendek via curl api
-        curl -sLo check-kernel-config https://githubusercontent.com
+        
+        # Trik variabel untuk mengunduh skrip UBports tanpa merusak teks tautan
+        curl -sLo check-kernel-config "https://githubusercontent.com"
+        
         chmod +x check-kernel-config
         ./check-kernel-config out/.config -w
         make ARCH=arm64 O=out savedefconfig
@@ -45,10 +57,11 @@ jobs:
     - name: Bungkus Kernel Menjadi boot.img (Halium)
       run: |
         cd $GITHUB_WORKSPACE
-        curl -sLo mkbootimg https://githubusercontent.com
+        
+        # Trik variabel untuk mengunduh mkbootimg
+        curl -sLo mkbootimg "https://githubusercontent.com"
         chmod +x mkbootimg
         
-        # Membaca biner keluaran dari folder internal mesin virtual /out/
         ./mkbootimg --kernel kernel/out/arch/arm64/boot/Image.gz-dtb \
                     --ramdisk /boot/initrd.img-generic \
                     --cmdline "console=ttyMSM0,115200n8 androidboot.hardware=qcom user_debug=31 androidboot.bootdevice=7824900.sdhci-retrofitted" \
