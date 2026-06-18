@@ -19,13 +19,13 @@ jobs:
         version: 14
         platform: x64
 
-    - name: Unduh GCC Cross-Compilers (AOSP Prebuilts)
+    - name: Unduh GCC Cross-Compilers (GitHub Mirrors)
       run: |
         mkdir -p $GITHUB_WORKSPACE/toolchain
         cd $GITHUB_WORKSPACE/toolchain
-        # Mengunduh GCC silang biner bawaan AOSP untuk penanganan assembler mesin tingkat rendah
-        git clone https://googlesource.com --depth=1 gcc64
-        git clone https://googlesource.com --depth=1 gcc32
+        # Menggunakan repositori alternatif GitHub yang bebas dari isu otentikasi 404 Google Source
+        git clone https://github.com --depth=1 gcc64
+        git clone https://github.com --depth=1 gcc32
 
     - name: Ambil Kode Sumber Kernel 4.19 Mi8937
       run: |
