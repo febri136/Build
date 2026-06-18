@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-kernel:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Standard Pengaturan Lingkungan Build
@@ -13,15 +13,19 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev libelf-dev
 
-    - name: Unduh Android Toolchain (Proton Clang Pre-built)
+    - name: Set Up LLVM dan Clang Compiler
+      uses: egor-tensin/setup-clang@v2
+      with:
+        version: 14
+        platform: x64
+
+    - name: Unduh GCC Cross-Compilers (AOSP Prebuilts)
       run: |
         mkdir -p $GITHUB_WORKSPACE/toolchain
         cd $GITHUB_WORKSPACE/toolchain
-        # Mengunduh LLVM/Clang pra-kompilasi mandiri via HTTPS tarball (bebas dari isu otentikasi git)
-        wget https://github.com -O clang.tar.gz
-        tar -xf clang.tar.gz
-        mv proton-clang-master clang
-        rm clang.tar.gz
+        # Mengunduh GCC silang biner bawaan AOSP untuk penanganan assembler mesin tingkat rendah
+        git clone https://googlesource.com --depth=1 gcc64
+        git clone https://googlesource.com --depth=1 gcc32
 
     - name: Ambil Kode Sumber Kernel 4.19 Mi8937
       run: |
@@ -43,11 +47,11 @@ jobs:
     - name: Eksekusi Kompilasi Kernel 4.19
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        # Mengatur jalur path compiler Clang terpadu
-        export PATH="$GITHUB_WORKSPACE/toolchain/clang/bin:$PATH"
+        # Mengintegrasikan tautan binutils GCC ke dalam env PATH
+        export PATH="$GITHUB_WORKSPACE/toolchain/gcc64/bin:$GITHUB_WORKSPACE/toolchain/gcc32/bin:$PATH"
         
-        # Eksekusi kompilasi murni menggunakan bendera Proton Clang
-        make ARCH=arm64 O=out CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- -j$(nproc)
+        # Eksekusi kompilasi terpadu menggunakan Clang dari sistem GitHub Virtual Machine
+        make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- -j$(nproc)
 
     - name: Bungkus Kernel Menjadi boot.img (Halium)
       run: |
