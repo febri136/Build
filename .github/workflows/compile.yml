@@ -11,14 +11,17 @@ jobs:
     - name: Standard Pengaturan Lingkungan Build
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev
+        sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev libelf-dev
 
     - name: Unduh Android Toolchain (Clang/GCC)
       run: |
         mkdir -p $GITHUB_WORKSPACE/toolchain
         cd $GITHUB_WORKSPACE/toolchain
-        # Mengunduh AOSP GCC sebagai toolchain arm64 standar yang valid
-        git clone https://googlesource.com --depth=1
+        # Mengunduh Android Clang resmi yang valid untuk Kernel 4.19
+        git clone https://googlesource.com --depth=1 clang
+        # Mengunduh GCC silang untuk assembler arsitektur arm64 murni
+        git clone https://googlesource.com --depth=1 gcc64
+        git clone https://googlesource.com --depth=1 gcc32
 
     - name: Ambil Kode Sumber Kernel 4.19 Mi8937
       run: |
@@ -40,10 +43,12 @@ jobs:
     - name: Eksekusi Kompilasi Kernel 4.19
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        export PATH="$GITHUB_WORKSPACE/toolchain/aarch64-linux-android-4.9/bin:$PATH"
-        export ARCH=arm64
-        export CROSS_COMPILE=aarch64-linux-android-
-        make ARCH=arm64 -j$(nproc)
+        # Mengatur jalur path compiler Clang dan GCC terpadu
+        export PATH="$GITHUB_WORKSPACE/toolchain/clang/clang-stable/bin:$GITHUB_WORKSPACE/toolchain/gcc64/bin:$GITHUB_WORKSPACE/toolchain/gcc32/bin:$PATH"
+        
+        # Eksekusi kompilasi menggunakan bendera Clang (standar kernel 4.19 ke atas)
+        make ARCH=arm64 O=out msm8937_defconfig
+        make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- -j$(nproc)
 
     - name: Bungkus Kernel Menjadi boot.img (Halium)
       run: |
@@ -53,8 +58,8 @@ jobs:
         wget https://githubusercontent.com
         chmod +x mkbootimg
         
-        # Eksekusi pembungkusan kernel (Ubah parameter cmdline/base jika tidak cocok dengan device tree Anda)
-        ./mkbootimg --kernel kernel/arch/arm64/boot/Image.gz-dtb \
+        # Eksekusi pembungkusan kernel (Membaca biner dari folder output 'out')
+        ./mkbootimg --kernel kernel/out/arch/arm64/boot/Image.gz-dtb \
                     --ramdisk halium-boot/initramfs-tools-halium/initrd.img-touch-arm64 \
                     --cmdline "console=ttyMSM0,115200n8 androidboot.hardware=qcom user_debug=31 androidboot.bootdevice=7824900.sdhci-retrofitted" \
                     --base 0x80000000 \
@@ -66,4 +71,3 @@ jobs:
       with:
         name: UT-Boot-Image-Mi8937
         path: ubuntu-touch-boot-mi8937.img
-        
