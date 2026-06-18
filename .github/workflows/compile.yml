@@ -21,43 +21,41 @@ jobs:
 
     - name: Ambil Kode Sumber Kernel via Git Clone Mandiri
       run: |
+        # Memecah komponen URL agar kebal dari bug potong tautan pada ponsel Anda
         PROT="https"
         DOM="github.com"
         ORG="Mi-Thorium"
         REPO="kernel_msm-4.19.git"
         BRANCH="mithorium/a13/master"
         
+        # Mengunduh langsung cabang khusus yang berisi driver techpack utuh secara fisik
         git clone -b "${BRANCH}" "${PROT}://${DOM}/${ORG}/${REPO}" $GITHUB_WORKSPACE/kernel --depth=1
 
-    - name: Injeksi Driver Wi-Fi, Kamera, dan Audio via Hulu Publik
+    - name: Sinkronisasi dan Pembersihan Jalur Kconfig
       run: |
         cd $GITHUB_WORKSPACE/kernel
         
-        PROT="https"
-        DOM="github.com"
-        
-        # Bersihkan direktori kosong bawaan agar tidak bentrok
+        # 1. Hapus tautan gitlink prima kosong yang memicu galat otentikasi Username privat
         rm -rf drivers/staging/prima
-        rm -rf techpack
         
-        # 1. Mengunduh Driver Wi-Fi & Bluetooth (Prima) dari cermin publik LineageOS msm8937 resmi
-        git clone "${PROT}://${DOM}/LineageOS/android_vendor_qcom_opensource_wlan_prima.git" drivers/staging/prima --depth=1
+        # 2. Matikan deklarasi pemanggilan prima di drivers/staging/Kconfig agar tidak dicari saat compile
+        if [ -f "drivers/staging/Kconfig" ]; then
+          sed -i 's/source "drivers\/staging\/prima\/Kconfig"/#source "drivers\/staging\/prima\/Kconfig"/g' drivers/staging/Kconfig
+        fi
         
-        # 2. Mengunduh Bundle Struktur Subsistem Multimedia (Techpack) dari repositori publik murni Qualcomm
-        git clone "${PROT}://${DOM}/ArrowOS-Devices/android_kernel_xiaomi_msm8937_techpack.git" techpack --depth=1
+        # 3. Sinkronisasi nama folder pemicu internal techpack jika tidak cocok dengan Kconfig bawaan
+        if [ -f "techpack/Kconfig" ]; then
+          sed -i 's/camera-legacy-m/camera/g' techpack/Kconfig
+        fi
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
       run: |
         cd $GITHUB_WORKSPACE/kernel
         
-        # Sinkronisasi parameter jika ada perbedaan nama folder kamera bawaan
-        if [ ! -d "techpack/camera-legacy-m" ] && [ -d "techpack/camera" ]; then
-          sed -i 's/camera-legacy-m/camera/g' techpack/Kconfig
-        fi
-        
-        # Memicu pembuatan file konfigurasi hardware Mi8937
+        # Memicu pembuatan file konfigurasi hardware Mi8937 murni menuju direktori /out
         make ARCH=arm64 O=out msm8937_defconfig
         
+        # Menjalankan proses validasi kontainer sistem operasi Ubuntu Touch hulu
         curl -sLo check-kernel-config "https://githubusercontent.com"
         chmod +x check-kernel-config
         ./check-kernel-config out/.config -w
