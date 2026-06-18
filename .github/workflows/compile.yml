@@ -13,15 +13,15 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev libelf-dev
 
-    - name: Unduh Android Toolchain (Clang/GCC)
+    - name: Unduh Android Toolchain (Proton Clang Pre-built)
       run: |
         mkdir -p $GITHUB_WORKSPACE/toolchain
         cd $GITHUB_WORKSPACE/toolchain
-        # Mengunduh Android Clang resmi yang valid untuk Kernel 4.19
-        git clone https://googlesource.com --depth=1 clang
-        # Mengunduh GCC silang untuk assembler arsitektur arm64 murni
-        git clone https://googlesource.com --depth=1 gcc64
-        git clone https://googlesource.com --depth=1 gcc32
+        # Mengunduh LLVM/Clang pra-kompilasi mandiri via HTTPS tarball (bebas dari isu otentikasi git)
+        wget https://github.com -O clang.tar.gz
+        tar -xf clang.tar.gz
+        mv proton-clang-master clang
+        rm clang.tar.gz
 
     - name: Ambil Kode Sumber Kernel 4.19 Mi8937
       run: |
@@ -31,24 +31,23 @@ jobs:
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        make ARCH=arm64 msm8937_defconfig
+        make ARCH=arm64 O=out msm8937_defconfig
         # Mengunduh skrip verifikasi konfigurasi resmi milik UBports
         wget https://githubusercontent.com
         chmod +x check-kernel-config
         # Mengotomatiskan injeksi parameter wajib Ubuntu Touch ke berkas .config
-        ./check-kernel-config .config -w
+        ./check-kernel-config out/.config -w
         # Menyimpan hasil modifikasi konfigurasi kembali ke struktur defconfig sebelum kompilasi
-        make ARCH=arm64 savedefconfig
+        make ARCH=arm64 O=out savedefconfig
 
     - name: Eksekusi Kompilasi Kernel 4.19
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        # Mengatur jalur path compiler Clang dan GCC terpadu
-        export PATH="$GITHUB_WORKSPACE/toolchain/clang/clang-stable/bin:$GITHUB_WORKSPACE/toolchain/gcc64/bin:$GITHUB_WORKSPACE/toolchain/gcc32/bin:$PATH"
+        # Mengatur jalur path compiler Clang terpadu
+        export PATH="$GITHUB_WORKSPACE/toolchain/clang/bin:$PATH"
         
-        # Eksekusi kompilasi menggunakan bendera Clang (standar kernel 4.19 ke atas)
-        make ARCH=arm64 O=out msm8937_defconfig
-        make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- -j$(nproc)
+        # Eksekusi kompilasi murni menggunakan bendera Proton Clang
+        make ARCH=arm64 O=out CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- -j$(nproc)
 
     - name: Bungkus Kernel Menjadi boot.img (Halium)
       run: |
@@ -71,3 +70,4 @@ jobs:
       with:
         name: UT-Boot-Image-Mi8937
         path: ubuntu-touch-boot-mi8937.img
+        
