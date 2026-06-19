@@ -1,4 +1,4 @@
-name: Build Ubuntu Touch Boot Image Mi8937
+name: Build Ubuntu Touch Boot Image Mi8937 Minim Bug
 
 on:
   workflow_dispatch:
@@ -11,7 +11,6 @@ jobs:
     - name: Standard Pengaturan Lingkungan Build
       run: |
         sudo apt-get update
-        # PERBAIKAN 1: Menambahkan lld dan llvm ke dalam baris instalan apt-get bawaan Ubuntu
         sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev libelf-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi lld llvm
 
     - name: Set Up LLVM dan Clang Compiler
@@ -22,56 +21,60 @@ jobs:
 
     - name: Ambil Kode Sumber Kernel via Git Clone Mandiri
       run: |
-        # Memecah komponen URL agar kebal dari bug potong tautan pada ponsel Anda
         PROT="https"
         DOM="github.com"
         ORG="Mi-Thorium"
         REPO="kernel_msm-4.19.git"
         BRANCH="mithorium/a13/master"
         
-        # Mengunduh langsung cabang khusus Mi-Thorium msm-4.19 yang berisi folder techpack utuh secara fisik
         git clone -b "${BRANCH}" "${PROT}://${DOM}/${ORG}/${REPO}" $GITHUB_WORKSPACE/kernel --depth=1
 
-    - name: Sinkronisasi dan Pembersihan Jalur Kconfig
+    - name: Injeksi Driver Wi-Fi Prima Publik (Mencegah Bug Wi-Fi Mati)
       run: |
         cd $GITHUB_WORKSPACE/kernel
+        PROT="https"
+        DOM="github.com"
         
-        # 1. Hapus tautan gitlink prima kosong yang memicu galat otentikasi Username privat
+        # Bersihkan symlink kosong bawaan repo
         rm -rf drivers/staging/prima
         
-        # 2. Matikan deklarasi pemanggilan prima di drivers/staging/Kconfig agar tidak dicari saat compile
-        if [ -f "drivers/staging/Kconfig" ]; then
-          sed -i 's/source "drivers\/staging\/prima\/Kconfig"/#source "drivers\/staging\/prima\/Kconfig"/g' drivers/staging/Kconfig
-        fi
-        
-        # 3. PERBAIKAN TECHPACK: Menghapus baris pencarian folder fiktif (baris 11-15) yang membuat build gagal
-        if [ -f "techpack/Kconfig" ]; then
-          sed -i '/camera-legacy/d' techpack/Kconfig
-          sed -i '/xiaomi-msm8937/d' techpack/Kconfig
-          sed -i '/xiaomi-sdm439/d' techpack/Kconfig
-          
-          # Menyisipkan instruksi pemanggilan folder 'camera' asli tepat sebelum kata 'endmenu'
-          sed -i '/endmenu/i \source "techpack/camera/Kconfig"' techpack/Kconfig
-        fi
+        # Ambil driver prima publik LineageOS 4.19 murni yang stabil
+        git clone "${PROT}://${DOM}/LineageOS/android_vendor_qcom_opensource_wlan_prima.git" drivers/staging/prima --depth=1
 
-        # 4. MEMBUAT KCONFIG DI FOLDER CAMERA: Karena folder camera hanya berisi Makefile/Kbuild,
-        # kita buatkan Kconfig kosong agar sistem make menganggapnya valid dan tidak melempar galat.
-        if [ -d "techpack/camera" ]; then
-          echo '# Camera subsystem Kconfig dummy' > techpack/camera/Kconfig
-        fi
-
-    - name: Menyiapkan File Konfigurasi Defconfig
+    - name: Modifikasi Konfigurasi untuk Minim Bug di Ubuntu Touch
       run: |
         cd $GITHUB_WORKSPACE/kernel
         mkdir -p out
-        # Menggunakan parameter LLVM=1 sejak pembuatan defconfig awal
+        
+        # 1. Ekstrak defconfig awal perangkat Mi8937
         make ARCH=arm64 O=out LLVM=1 vendor/msm8937_defconfig
+        
+        # 2. FIX BUG COMPATIBILITY: Matikan subsistem BPF Android modern yang memicu kernel panic/crash kompilasi
+        sed -i 's/CONFIG_BPF_PRELOAD=y/CONFIG_BPF_PRELOAD=n/g' out/.config
+        echo 'CONFIG_BPF_PRELOAD_UMD=n' >> out/.config
+        
+        # 3. KUNCI MINIM BUG UBUNTU TOUCH: Menyuntikkan parameter kontainer wajib Linux (Halium Requirements)
+        # Menjamin pengenalan systemd, mount namespace, dan hak akses jaringan aplikasi murni
+        echo 'CONFIG_NAMESPACES=y' >> out/.config
+        echo 'CONFIG_NET_NS=y' >> out/.config
+        echo 'CONFIG_PID_NS=y' >> out/.config
+        echo 'CONFIG_IPC_NS=y' >> out/.config
+        echo 'CONFIG_UTS_NS=y' >> out/.config
+        echo 'CONFIG_CGROUPS=y' >> out/.config
+        echo 'CONFIG_CGROUP_FREEZER=y' >> out/.config
+        echo 'CONFIG_CGROUP_DEVICE=y' >> out/.config
+        echo 'CONFIG_DEVTMPFS=y' >> out/.config
+        echo 'CONFIG_DEVTMPFS_MOUNT=y' >> out/.config
+        echo 'CONFIG_DEVPTS_MULTIPLE_INSTANCES=y' >> out/.config
+        echo 'CONFIG_ANDROID_BINDER_IPC=y' >> out/.config
+        echo 'CONFIG_ANDROID_BINDER_DEVICES="binder,hwbinder,vndbinder"' >> out/.config
+        
+        # 4. Simpan kembali konfigurasi yang sudah ditambal rapi
         make ARCH=arm64 O=out LLVM=1 savedefconfig
 
     - name: Eksekusi Kompilasi Kernel 4.19
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        # Menambahkan LLVM=1 untuk memaksa sistem menggunakan llvm-binutils modern bebas dari Unrecognized form 0x22
         make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 -j$(nproc)
 
     - name: Bungkus Kernel Menjadi boot.img (Halium)
@@ -90,6 +93,6 @@ jobs:
     - name: Unggah Hasil boot.img ke Tab Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: UT-Boot-Image-Mi8937
+        name: UT-Boot-Image-Mi8937-MinimBug
         path: ubuntu-touch-boot-mi8937.img
         
