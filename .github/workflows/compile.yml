@@ -28,7 +28,7 @@ jobs:
         REPO="kernel_msm-4.19.git"
         BRANCH="mithorium/a13/master"
         
-        # Mengunduh langsung cabang khusus yang berisi driver techpack utuh secara fisik
+        # Mengunduh langsung cabang khusus Mi-Thorium msm-4.19
         git clone -b "${BRANCH}" "${PROT}://${DOM}/${ORG}/${REPO}" $GITHUB_WORKSPACE/kernel --depth=1
 
     - name: Sinkronisasi dan Pembersihan Jalur Kconfig
@@ -43,9 +43,21 @@ jobs:
           sed -i 's/source "drivers\/staging\/prima\/Kconfig"/#source "drivers\/staging\/prima\/Kconfig"/g' drivers/staging/Kconfig
         fi
         
-        # 3. SOLUSI MUTAKHIR: Membuka file techpack/Kconfig dan mengubah rute 'camera-legacy' ke folder 'camera' yang asli ada di gambar Anda
+        # 3. PERBAIKAN TOTAL TECHPACK: Menghapus baris pencarian folder fiktif (baris 11-15) yang membuat build gagal
         if [ -f "techpack/Kconfig" ]; then
-          sed -i 's/camera-legacy/camera/g' techpack/Kconfig
+          # Menghapus baris berisi kamera-legacy, msm8937, dan sdm439 yang kosong di dalam file
+          sed -i '/camera-legacy/d' techpack/Kconfig
+          sed -i '/xiaomi-msm8937/d' techpack/Kconfig
+          sed -i '/xiaomi-sdm439/d' techpack/Kconfig
+          
+          # Menyisipkan instruksi pemanggilan folder 'camera' asli tepat sebelum kata 'endmenu'
+          sed -i '/endmenu/i \source "techpack/camera/Kconfig"' techpack/Kconfig
+        fi
+
+        # 4. MEMBUAT KCONFIG PALSU DI FOLDER CAMERA: Karena folder camera hanya berisi Makefile/Kbuild, 
+        # kita buatkan Kconfig kosong agar sistem make menganggapnya valid dan tidak melempar galat.
+        if [ -d "techpack/camera" ]; then
+          echo '# Camera subsystem Kconfig dummy' > techpack/camera/Kconfig
         fi
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
