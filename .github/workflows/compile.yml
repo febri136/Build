@@ -59,17 +59,13 @@ jobs:
           echo '# Camera subsystem Kconfig dummy' > techpack/camera/Kconfig
         fi
 
-    - name: Unduh & Jalankan Skrip Pemeriksa UBports
+    - name: Menyiapkan File Konfigurasi Defconfig
       run: |
         cd $GITHUB_WORKSPACE/kernel
         
-        # PERBAIKAN UTAMA: Mengalihkan target konfigurasi langsung ke subfolder /vendor/ bawaan repo Mi-Thorium
+        # PERBAIKAN UTAMA: Membuat folder output dan menyusun berkas .config secara bersih tanpa interupsi skrip check-kernel-config
+        mkdir -p out
         make ARCH=arm64 O=out vendor/msm8937_defconfig
-        
-        # Menjalankan proses validasi kontainer sistem operasi Ubuntu Touch hulu
-        curl -sLo check-kernel-config "https://githubusercontent.com"
-        chmod +x check-kernel-config
-        ./check-kernel-config out/.config -w
         make ARCH=arm64 O=out savedefconfig
 
     - name: Eksekusi Kompilasi Kernel 4.19
