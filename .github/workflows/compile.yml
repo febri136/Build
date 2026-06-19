@@ -44,17 +44,31 @@ jobs:
     - name: Modifikasi Konfigurasi untuk Minim Bug di Ubuntu Touch
       run: |
         cd $GITHUB_WORKSPACE/kernel
+        
+        # PERBAIKAN UTAMA MULTIMEDIA: 
+        # 1. Mengubah tulisan camera-legacy, xiaomi-msm8937, dan xiaomi-sdm439 yang kosong/fiktif di Kconfig techpack
+        if [ -f "techpack/Kconfig" ]; then
+          sed -i 's/camera-legacy/camera/g' techpack/Kconfig
+          sed -i '/xiaomi-msm8937/d' techpack/Kconfig
+          sed -i '/xiaomi-sdm439/d' techpack/Kconfig
+        fi
+
+        # 2. Membuat file Kconfig dummy di dalam folder techpack/camera fisik agar compiler tidak melempar galat "can't open file"
+        if [ -d "techpack/camera" ]; then
+          echo '# Camera subsystem Kconfig dummy' > techpack/camera/Kconfig
+        fi
+        
+        # Buat folder output
         mkdir -p out
         
-        # 1. Ekstrak defconfig awal perangkat Mi8937
+        # 3. Ekstrak defconfig awal perangkat Mi8937 menggunakan linker LLVM modern
         make ARCH=arm64 O=out LLVM=1 vendor/msm8937_defconfig
         
-        # 2. FIX BUG COMPATIBILITY: Matikan subsistem BPF Android modern yang memicu kernel panic/crash kompilasi
+        # 4. FIX BUG COMPATIBILITY: Matikan subsistem BPF Android modern yang memicu kernel panic/crash kompilasi
         sed -i 's/CONFIG_BPF_PRELOAD=y/CONFIG_BPF_PRELOAD=n/g' out/.config
         echo 'CONFIG_BPF_PRELOAD_UMD=n' >> out/.config
         
-        # 3. KUNCI MINIM BUG UBUNTU TOUCH: Menyuntikkan parameter kontainer wajib Linux (Halium Requirements)
-        # Menjamin pengenalan systemd, mount namespace, dan hak akses jaringan aplikasi murni
+        # 5. KUNCI MINIM BUG UBUNTU TOUCH: Menyuntikkan parameter kontainer wajib Linux (Halium Requirements)
         echo 'CONFIG_NAMESPACES=y' >> out/.config
         echo 'CONFIG_NET_NS=y' >> out/.config
         echo 'CONFIG_PID_NS=y' >> out/.config
@@ -69,7 +83,7 @@ jobs:
         echo 'CONFIG_ANDROID_BINDER_IPC=y' >> out/.config
         echo 'CONFIG_ANDROID_BINDER_DEVICES="binder,hwbinder,vndbinder"' >> out/.config
         
-        # 4. Simpan kembali konfigurasi yang sudah ditambal rapi
+        # 6. Simpan kembali konfigurasi yang sudah ditambal rapi
         make ARCH=arm64 O=out LLVM=1 savedefconfig
 
     - name: Eksekusi Kompilasi Kernel 4.19
