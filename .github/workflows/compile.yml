@@ -39,7 +39,7 @@ jobs:
         rm -rf drivers/staging/prima
         
         # 2. Matikan deklarasi pemanggilan prima di drivers/staging/Kconfig agar tidak dicari saat compile
-        if [ -f "drivers/staging/Kconfig" ]; then
+        if [ -f "drivers/staging/prima/Kconfig" ]; then
           sed -i 's/source "drivers\/staging\/prima\/Kconfig"/#source "drivers\/staging\/prima\/Kconfig"/g' drivers/staging/Kconfig
         fi
         
@@ -62,16 +62,16 @@ jobs:
     - name: Menyiapkan File Konfigurasi Defconfig
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        
-        # PERBAIKAN UTAMA: Membuat folder output dan menyusun berkas .config secara bersih tanpa interupsi skrip check-kernel-config
         mkdir -p out
-        make ARCH=arm64 O=out vendor/msm8937_defconfig
-        make ARCH=arm64 O=out savedefconfig
+        # Menggunakan parameter LLVM=1 sejak pembuatan defconfig awal
+        make ARCH=arm64 O=out LLVM=1 vendor/msm8937_defconfig
+        make ARCH=arm64 O=out LLVM=1 savedefconfig
 
     - name: Eksekusi Kompilasi Kernel 4.19
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- -j$(nproc)
+        # PERBAIKAN UTAMA: Menambahkan LLVM=1 untuk memaksa sistem menggunakan llvm-binutils modern bebas dari Unrecognized form 0x22
+        make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 -j$(nproc)
 
     - name: Bungkus Kernel Menjadi boot.img (Halium)
       run: |
