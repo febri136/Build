@@ -28,7 +28,7 @@ jobs:
         REPO="kernel_msm-4.19.git"
         BRANCH="mithorium/a13/master"
         
-        # Mengunduh langsung cabang khusus Mi-Thorium msm-4.19
+        # Mengunduh langsung cabang khusus Mi-Thorium msm-4.19 yang berisi folder techpack utuh secara fisik
         git clone -b "${BRANCH}" "${PROT}://${DOM}/${ORG}/${REPO}" $GITHUB_WORKSPACE/kernel --depth=1
 
     - name: Sinkronisasi dan Pembersihan Jalur Kconfig
@@ -43,9 +43,8 @@ jobs:
           sed -i 's/source "drivers\/staging\/prima\/Kconfig"/#source "drivers\/staging\/prima\/Kconfig"/g' drivers/staging/Kconfig
         fi
         
-        # 3. PERBAIKAN TOTAL TECHPACK: Menghapus baris pencarian folder fiktif (baris 11-15) yang membuat build gagal
+        # 3. PERBAIKAN TECHPACK: Menghapus baris pencarian folder fiktif (baris 11-15) yang membuat build gagal
         if [ -f "techpack/Kconfig" ]; then
-          # Menghapus baris berisi kamera-legacy, msm8937, dan sdm439 yang kosong di dalam file
           sed -i '/camera-legacy/d' techpack/Kconfig
           sed -i '/xiaomi-msm8937/d' techpack/Kconfig
           sed -i '/xiaomi-sdm439/d' techpack/Kconfig
@@ -54,7 +53,7 @@ jobs:
           sed -i '/endmenu/i \source "techpack/camera/Kconfig"' techpack/Kconfig
         fi
 
-        # 4. MEMBUAT KCONFIG PALSU DI FOLDER CAMERA: Karena folder camera hanya berisi Makefile/Kbuild, 
+        # 4. MEMBUAT KCONFIG DI FOLDER CAMERA: Karena folder camera hanya berisi Makefile/Kbuild,
         # kita buatkan Kconfig kosong agar sistem make menganggapnya valid dan tidak melempar galat.
         if [ -d "techpack/camera" ]; then
           echo '# Camera subsystem Kconfig dummy' > techpack/camera/Kconfig
@@ -64,8 +63,8 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel
         
-        # Memicu pembuatan file konfigurasi hardware Mi8937 murni menuju direktori /out
-        make ARCH=arm64 O=out msm8937_defconfig
+        # PERBAIKAN UTAMA: Mengalihkan target konfigurasi langsung ke subfolder /vendor/ bawaan repo Mi-Thorium
+        make ARCH=arm64 O=out vendor/msm8937_defconfig
         
         # Menjalankan proses validasi kontainer sistem operasi Ubuntu Touch hulu
         curl -sLo check-kernel-config "https://githubusercontent.com"
