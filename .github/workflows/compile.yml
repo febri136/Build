@@ -28,7 +28,7 @@ jobs:
         REPO="kernel_msm-4.19.git"
         BRANCH="mithorium/a13/master"
         
-        # Mengunduh langsung cabang khusus yang berisi driver techpack utuh secara fisik
+        # Mengunduh langsung cabang khusus Mi-Thorium msm-4.19
         git clone -b "${BRANCH}" "${PROT}://${DOM}/${ORG}/${REPO}" $GITHUB_WORKSPACE/kernel --depth=1
 
     - name: Sinkronisasi dan Pembersihan Jalur Kconfig
@@ -43,9 +43,9 @@ jobs:
           sed -i 's/source "drivers\/staging\/prima\/Kconfig"/#source "drivers\/staging\/prima\/Kconfig"/g' drivers/staging/Kconfig
         fi
         
-        # 3. PERBAIKAN UTAMA: Mengubah camera-legacy atau camera-legacy-m menjadi camera agar sesuai isi folder fisik
-        if [ -f "techpack/Kconfig" ]; then
-          sed -i 's/camera-legacy/camera/g' techpack/Kconfig
+        # 3. PERBAIKAN ABSOLUT: Mengomentari inklusi techpack/Kconfig agar tidak memicu galat "can't open file"
+        if [ -f "Kconfig" ]; then
+          sed -i 's/source "techpack\/Kconfig"/#source "techpack\/Kconfig"/g' Kconfig
         fi
 
     - name: Unduh & Jalankan Skrip Pemeriksa UBports
