@@ -11,7 +11,8 @@ jobs:
     - name: Standard Pengaturan Lingkungan Build
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev libelf-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+        # PERBAIKAN 1: Menambahkan lld dan llvm ke dalam baris instalan apt-get bawaan Ubuntu
+        sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git android-sdk-libsparse-utils initramfs-tools cpio libgmp-dev libmpc-dev libelf-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi lld llvm
 
     - name: Set Up LLVM dan Clang Compiler
       uses: egor-tensin/setup-clang@v2
@@ -39,7 +40,7 @@ jobs:
         rm -rf drivers/staging/prima
         
         # 2. Matikan deklarasi pemanggilan prima di drivers/staging/Kconfig agar tidak dicari saat compile
-        if [ -f "drivers/staging/prima/Kconfig" ]; then
+        if [ -f "drivers/staging/Kconfig" ]; then
           sed -i 's/source "drivers\/staging\/prima\/Kconfig"/#source "drivers\/staging\/prima\/Kconfig"/g' drivers/staging/Kconfig
         fi
         
@@ -70,7 +71,7 @@ jobs:
     - name: Eksekusi Kompilasi Kernel 4.19
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        # PERBAIKAN UTAMA: Menambahkan LLVM=1 untuk memaksa sistem menggunakan llvm-binutils modern bebas dari Unrecognized form 0x22
+        # Menambahkan LLVM=1 untuk memaksa sistem menggunakan llvm-binutils modern bebas dari Unrecognized form 0x22
         make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 -j$(nproc)
 
     - name: Bungkus Kernel Menjadi boot.img (Halium)
